@@ -1,0 +1,71 @@
+#!/bin/bash
+# chkconfig: 2345 85 25
+### BEGIN INIT INFO
+# Provides: ncc
+# Required-Start: $local_fs $network
+# Required-Stop: $local_fs $network
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+### END INIT INFO
+export NRSPIDFILE=/var/run/nrs.pid
+export NRSROOT={{ nrs_install_dir }}/servant
+export NRSUSER={{ nrs_user }}
+
+function start {
+  su -c 'echo -n Starting NRS:
+         PID=`pgrep -n -u $NRSUSER java`
+         [ -n "$PID" ] && exit 1
+         cd $NRSROOT
+         nohup java -Xms256M -Xmx256M -cp ".:jars/*" org.nem.rewards.servant.NodeRewardsServant >/dev/null 2>&1 &
+         sleep 10
+         
+         while true
+         do
+           PID=`pgrep -n -u $NRSUSER java`
+           if [ -z "$PID" ]
+           then
+             echo \[FAILED\]
+             exit 3
+           fi
+           
+             echo \[OK\]
+             break
+           
+           sleep 5
+         done' $NRSUSER
+}
+function stop {
+  su -c 'echo -n Stopping NRS:
+         while true
+         do
+           PIDS=`pgrep -u $NRSUSER java`
+           if [ -z "$PIDS" ]
+           then
+             echo -n \[OK\]
+             break
+           fi
+           for PID in $PIDS
+           do
+             kill $PID
+           done
+           sleep 5
+         done
+         echo' $NRSUSER
+  rm -f $NRSPIDFILE
+}
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  restart)
+        stop
+        sleep 2
+        start
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|restart}"
+        exit 5
+esac

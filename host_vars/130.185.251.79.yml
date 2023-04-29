@@ -1,0 +1,36 @@
+---
+# Configuration file
+# Change settings here to control how sever is set up.
+nis_version: 0.6.101
+nis_latest_database: nis5_mainnet-3_852_955
+
+# VPS server IP address
+nem_host: 130.185.251.79
+nis_boot_name: AlphaVPS12G
+nis_boot_key: "{{ vault_nis_boot_key }}"
+
+admin_user: nem
+# IMPORTANT: Configure your own password for the admin user account. To generate
+# % ansible-vault encrypt_string \
+#     --vault-id nem@prompt \
+#     --name admin_user_password \
+#     'type your admin password here'
+admin_user_password: "{{ vault_admin_user_password }}"
+
+#lean_delivery.java
+transport: repositories
+java_major_version: 11
+java_package: jre
+
+
+##### DO NOT EDIT the following lines if you do not know well #####
+
+# change SSH port
+#ssh_port: 2222
+
+# firewall_allowed_tcp_ports:
+#   - "{{ ssh_port }}"
+#   - "7778"
+#   - "7880"
+#   - "7781"
+#   - "7890"

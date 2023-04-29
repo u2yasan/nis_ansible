@@ -1,0 +1,43 @@
+---
+- name: Upgrade all apt packages
+  apt: upgrade=dist force_apt_get=yes
+
+- name: Create nem user
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    password: "{{ admin_user_password | password_hash('sha512') }}"
+    shell: /bin/bash
+    group: sudo
+    createhome: yes
+
+- name: Set authorized key for user ubuntu copying it from current user
+  authorized_key:
+    user: "{{ admin_user }}"
+    state: present
+    key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"
+
+- name: Disable root login
+  ansible.builtin.lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: '^PermitRootLogin.+yes'
+    line: 'PermitRootLogin no'
+    state: present
+
+- name: Disable PasswordAuthentication
+  ansible.builtin.lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: '^#PasswordAuthentication.+yes'
+    line: 'PasswordAuthentication no'
+    state: present
+         
+- name: Disable PAM Auth
+  ansible.builtin.lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: '^UsePAM.+yes'
+    line: 'UsePAM no'
+    state: present
+    
+- name: Stop and Start ssh
+  service:
+    name: ssh
+    state: restarted

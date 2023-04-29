@@ -1,0 +1,15 @@
+---
+- hosts: all
+  
+  vars_files:
+    - host_vars/{{ inventory_hostname }}.yml
+    - host_vars/{{ inventory_hostname }}_vault.yml
+  roles:
+    - role: init
+    - { role: swap, become: true }
+    - { role: lean_delivery.java, become: true }
+    - { role: firewall, become: true }
+    - role: nem
+      tags: [nem]
+#   handlers:
+#       - import_tasks: common/handlers/main.yml

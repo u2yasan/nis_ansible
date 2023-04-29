@@ -1,0 +1,90 @@
+---
+- block:
+  - name: check nem is installed
+    stat:
+      path: "{{ ansible_env.HOME }}/nem"
+    register: nemdir
+
+  - name: downlowd nis
+    ansible.builtin.get_url:
+      url: https://bob.nem.ninja/nis-{{ nis_version }}.tgz
+      dest: "{{ ansible_env.HOME }}"
+    when: not nemdir.stat.exists
+
+  - name: and unarchive nis
+    ansible.builtin.unarchive:
+      src: https://bob.nem.ninja/nis-{{ nis_version }}.tgz
+      dest: "{{ ansible_env.HOME }}"
+      remote_src: yes
+    when: not nemdir.stat.exists
+
+  - name: rename package to nem
+    ansible.builtin.command: "mv {{ ansible_env.HOME }}/package {{ ansible_env.HOME }}/nem"
+    when: not nemdir.stat.exists
+
+  - name: check latest_database exists 
+    stat:
+      path: "{{ ansible_env.HOME }}/nem/nis/data/nis5_mainnet.mv.db"
+    register: db
+    ignore_errors: true
+
+  - name: Create data directory if not exists
+    file:
+      path: "{{ ansible_env.HOME }}/nem/nis/data/"
+      state: directory
+    when: not db.stat.exists
+
+  - name: downlowd database
+    ansible.builtin.get_url:
+      url: https://bob.nem.ninja/{{ nis_latest_database }}.mv.db.gz
+      dest: "{{ ansible_env.HOME }}/nem/nis/data/"
+    when: not db.stat.exists  
+
+  # - name: download and unarchive database
+  #   ansible.builtin.unarchive:
+  #     src: https://bob.nem.ninja/{{ nis_latest_database }}
+  #     dest: "{{ ansible_env.HOME }}/nem/nis/data/"
+  #     remote_src: yes
+  #   when: not db.stat.exists
+
+  - name: unarchive db
+    ansible.builtin.command: "gzip -d  {{ ansible_env.HOME }}//nem/nis/data/{{ nis_latest_database }}.mv.db.gz"
+    when: not db.stat.exists
+
+  - name: rename dbname
+    ansible.builtin.command: "mv {{ ansible_env.HOME }}//nem/nis/data/{{ nis_latest_database }}.mv.db {{ ansible_env.HOME }}//nem/nis/data/nis5_mainnet.mv.db"
+    when: not db.stat.exists
+
+  - name: Copy nis user-config template
+    ansible.builtin.template:
+      src: nis-config-user.properties.j2
+      dest: "{{ ansible_env.HOME }}/nem/nis/config-user.properties"
+    when: not db.stat.exists
+
+  # - name: Copy nis logalpha.properties template
+  #   template: src=nis-logalpha.properties.j2 dest={{ nis_install_dir }}/package/nis/logalpha.properties.properties
+
+  - name: +x nis run script
+    ansible.builtin.shell: chmod +x {{ ansible_env.HOME }}/nem/nix.runNis.sh
+
+  
+  - name: startup NIS
+    ansible.builtin.shell: nohup ./nix.runNis.sh >/dev/null 2>&1 &
+    poll: 0
+    args:
+      chdir: "{{ ansible_env.HOME }}/nem/"
+
+  # - name: Copy nis upstart scripts
+  #   template: src=nis.j2 dest=/etc/init.d/nis mode=0700
+  # 
+  # - name: Copy nrs upstart scripts
+  #   template: src=nrs.j2 dest=/etc/init.d/nrs mode=0700
+  #   
+  # - name: start NIS
+  #   command: /etc/init.d/nis start
+  # 
+  #   
+  # - name: start NRS
+  #   command: /etc/init.d/nrs start
+
+  become_user: "{{admin_user}}"

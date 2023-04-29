@@ -1,0 +1,80 @@
+#!/bin/bash
+# chkconfig: 2345 80 30
+
+### BEGIN INIT INFO
+# Provides: nis
+# Required-Start: $local_fs $network
+# Required-Stop: $local_fs $network
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+### END INIT INFO
+
+export NISPIDFILE=/var/run/nis.pid
+export NEMROOT={{ nis_install_dir }}/package
+export CONFIG_DIR={{ nis_install_dir }}/package
+export NISUSER={{ nis_user }}
+export NISDATADIR={{ nis_install_dir }}/package
+export NISLOGDIR={{ nis_install_dir }}/package/nis/logs
+export MAXRAM={{ nis_maxram }}
+
+function start {
+  su -c 'echo -n Starting NIS:
+         PID=`pgrep -n -u $NISUSER java`
+         [ -n "$PID" ] && exit 1
+         cd $NEMROOT/nis
+         nohup java -Xms$MAXRAM -Xmx$MAXRAM -cp ".:./*:../libs/*" org.nem.deploy.CommonStarter >/dev/null 2>&1 &
+         sleep 10
+         export NISLOGFILE=`ls $NISLOGDIR/nis-*.log.lck | cut -d. -f1,2`
+         [ ! -f "$NISLOGFILE" ] && exit 4
+         while true
+         do
+           PID=`pgrep -n -u $NISUSER java`
+           if [ -z "$PID" ]
+           then
+             echo \[FAILED\]
+             exit 3
+           fi
+           STARTED=`grep -m 1 " NEM Deploy is ready to serve" $NISLOGFILE`
+           if [ -n "$STARTED" ]
+           then
+             echo \[OK\]
+             break
+           fi
+           sleep 5
+         done' $NISUSER
+}
+
+function stop {
+  su -c 'echo -n Stopping NIS:
+         while true
+         do
+           PIDS=`pgrep -u $NISUSER java`
+           if [ -z "$PIDS" ]
+           then
+             echo -n \[OK\]
+             break
+           fi
+           for PID in $PIDS
+           do
+             kill $PID
+           done
+           sleep 5
+         done
+         echo' $NISUSER
+}
+
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  restart)
+        stop
+        start
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|restart}"
+        exit 6
+esac

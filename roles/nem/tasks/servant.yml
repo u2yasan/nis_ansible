@@ -1,0 +1,31 @@
+---
+- block:
+
+  - name: check servant is installed
+    stat:
+      path: "{{ ansible_env.HOME }}/nem/servant"
+    register: servant
+
+  - name: downlowd and unarchive servant
+    ansible.builtin.unarchive:
+      src: http://bob.nem.ninja/servant_0_0_4.zip
+      dest: "{{ ansible_env.HOME }}/nem/"
+      remote_src: yes
+    when: not servant.stat.exists   
+
+  - name: Copy servant user-config template
+    ansible.builtin.template:
+      src: servant-config-user.properties.j2
+      dest: "{{ ansible_env.HOME }}/nem/servant/config-user.properties"
+    when: not servant.stat.exists
+
+  - name: +x servant run script
+    ansible.builtin.command: chmod +x {{ ansible_env.HOME }}/nem/servant/startservant.sh
+
+  - name: startup Servant
+    ansible.builtin.command: nohup ./startservant.sh >/dev/null 2>&1 &
+    poll: 0
+    args:
+      chdir: "{{ ansible_env.HOME }}/nem/servant"
+
+  become_user: "{{admin_user}}"
